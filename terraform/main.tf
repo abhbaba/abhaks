@@ -94,19 +94,19 @@ resource "azurerm_application_gateway" "app_gateway" {
 
 # AKS module
 module "aks" {
-  source                 = "./modules/aks"
-  prefix                 = var.prefix
-  location               = var.location
-  resource_group_name    = azurerm_resource_group.rg.name
-  vnet_subnet_id         = module.network.aks_subnet_id
-  acr_id                 = azurerm_container_registry.acr.id
-  tenant_id              = var.tenant_id
-  admin_group_object_ids = var.admin_group_object_ids
-  node_vm_size           = var.node_vm_size
-  node_min_count         = var.node_min_count
-  node_max_count         = var.node_max_count
-  app_gateway_id         = azurerm_application_gateway.app_gateway.id
-  user_assigned_identity_id           = azurerm_user_assigned_identity.aks_identity.id
+  source                    = "./modules/aks"
+  prefix                    = var.prefix
+  location                  = var.location
+  resource_group_name       = azurerm_resource_group.rg.name
+  vnet_subnet_id            = module.network.aks_subnet_id
+  acr_id                    = azurerm_container_registry.acr.id
+  tenant_id                 = var.tenant_id
+  admin_group_object_ids    = var.admin_group_object_ids
+  node_vm_size              = var.node_vm_size
+  node_min_count            = var.node_min_count
+  node_max_count            = var.node_max_count
+  app_gateway_id            = azurerm_application_gateway.app_gateway.id
+  user_assigned_identity_id = azurerm_user_assigned_identity.aks_identity.id
 }
 
 # User-Assigned Managed Identity for AKS
