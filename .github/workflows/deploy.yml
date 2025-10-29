@@ -1,0 +1,100 @@
+name: Build, Helm deploy
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'app/**'
+      - 'k8s/**'
+      - 'helm/**'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch: 
+permissions:
+  id-token: write      # <-- required for OIDC
+  contents: read  
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      ACR_NAME: abhacr
+      ACR_LOGIN_SERVER: abhacr.azurecr.io
+      AKS_RG: abhidemo-rg
+      AKS_NAME: abhidemo-aks
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Login to Azure (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+
+      - name: Build and Push Docker image to ACR
+        run: |
+          az acr login --name ${{ env.ACR_NAME }}
+          IMAGE=${{ env.ACR_LOGIN_SERVER }}/service-a:latest
+          docker build -t $IMAGE ./app/service-a
+          docker push $IMAGE
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: 'latest'
+
+      - name: Get AKS credentials
+        run: |
+          az aks get-credentials -g $AKS_RG -n $AKS_NAME --overwrite-existing
+      
+      - name: Install and run kubelogin
+        run: |
+          az aks install-cli
+          kubelogin convert-kubeconfig -l azurecli
+          
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.11.0
+
+      - name: Add Helm repos
+        run: |
+          helm repo add gatekeeper https://open-policy-agent.github.io/gatekeeper/charts
+          helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+          helm repo update
+
+
+      - name: Install/Upgrade Gatekeeper (OPA)
+        run: |
+          helm upgrade --install gatekeeper gatekeeper/gatekeeper \
+            --namespace gatekeeper-system --create-namespace \
+            --set enableAudit=true --set auditInterval=60
+
+      - name: Install/Upgrade kube-prometheus-stack (Prometheus)
+        run: |
+          helm upgrade --install kube-prom-stack prometheus-community/kube-prometheus-stack \
+            --namespace monitoring --create-namespace \
+            --values helm/grafana-values.yaml            
+
+      - name: Apply Secret Provider Class, Gatekeeper and Grafana
+        run: |
+          cat k8s/secretproviderclass-grafana.yaml
+          kubectl apply -f k8s/gatekeeper-policies/privileged-template.yaml
+          kubectl apply -f k8s/gatekeeper-policies/privileged-constraint.yaml          
+          kubectl apply -f k8s/secretproviderclass-grafana.yaml
+          kubectl apply -f helm/grafana-deployment.yaml
+
+          
+      - name: Deploy dummy app manifests
+        run: |
+          kubectl apply -f app/service-a/k8s/deployment.yaml
+          kubectl apply -f app/service-a/k8s/service.yaml   
+
+      - name: Deploy Ingress
+        run: |
+          kubectl apply -f k8s/ingress.yaml      

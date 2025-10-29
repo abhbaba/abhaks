@@ -1,0 +1,40 @@
+name: Terraform CI & IaC Scanning
+
+on:
+  pull_request:
+    paths:
+      - 'terraform/**'
+  workflow_dispatch:      
+
+jobs:
+  terraform-checks:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+
+      - name: terraform fmt
+        run: terraform -chdir=terraform fmt -check
+
+      - name: terraform init
+        run: terraform -chdir=terraform init -backend=false
+
+      - name: terraform validate
+        run: terraform -chdir=terraform validate
+        
+      - name: Run Checkov (json)
+        run: |
+          pip install checkov --quiet
+          checkov -d ./terraform -o json > terraform/checkov_report.json || true      
+
+      - name: Upload Checkov artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: checkov-report
+          path: docs/checkov_report.json

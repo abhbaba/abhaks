@@ -1,0 +1,13 @@
+grafana:
+  enabled: false
+
+prometheus:
+  prometheusSpec:
+    externalUrl: "http://172.190.133.2/prometheus"
+    routePrefix: "/prometheus"
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          resources:
+            requests:
+              storage: 2Gi
