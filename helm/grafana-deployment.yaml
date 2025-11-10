@@ -62,7 +62,7 @@ spec:
             - name: GF_SECURITY_ADMIN_PASSWORD__FILE
               value: /etc/grafana-secrets/grafana-admin-password
             - name: GF_SERVER_ROOT_URL
-              value: "http://172.190.133.2/grafana"
+              value: "http://172.191.10.213/grafana"
             - name: GF_SERVER_SERVE_FROM_SUB_PATH
               value: "true"
             # Enable reporting and image rendering

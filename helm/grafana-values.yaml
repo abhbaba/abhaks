@@ -3,7 +3,7 @@ grafana:
 
 prometheus:
   prometheusSpec:
-    externalUrl: "http://172.190.133.2/prometheus"
+    externalUrl: "http://172.191.10.213/prometheus"
     routePrefix: "/prometheus"
     storageSpec:
       volumeClaimTemplate:
